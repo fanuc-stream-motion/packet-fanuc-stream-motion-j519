@@ -4,7 +4,7 @@ v0.0.6
 
 ## Overview
 
-This is a Wireshark Lua dissector for the Fanuc Stream Motion protocol.
+This is a (rather quick-and-dirty) Wireshark Lua dissector for the Fanuc Stream Motion protocol.
 For more information on the protocol, refer to the relevant Fanuc option documentation.
 
 ![Screenshot of Wireshark dissecting the sample capture](sshot.png)
