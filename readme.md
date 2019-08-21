@@ -14,7 +14,7 @@ For more information on the protocol, refer to the relevant Fanuc option documen
 
 ### Linux
 
-Copy or symlink the `packet-fanuc-stream-motion-j519.lua` file to either the Wireshark global (`/usr/(local/)share/wireshark/plugins`) or per-user (`$HOME/.config/wireshark/plugin` or `$HOME/.wireshark/plugins`) plugin directory.
+Copy or symlink the `packet-fanuc-stream-motion-j519.lua` file to either the Wireshark global (`/usr/(local/)share/wireshark/plugins`) or per-user (`$HOME/.config/wireshark/plugins` or `$HOME/.wireshark/plugins`) plugin directory.
 
 ### Windows
 
