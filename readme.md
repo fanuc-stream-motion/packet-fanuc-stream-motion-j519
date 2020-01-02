@@ -24,3 +24,10 @@ Copy or symlink the `packet-fanuc-stream-motion-j519.lua` file to either the Wir
 ## Compatible Wireshark versions
 
 The dissector has been extensively used with Wireshark versions 2.2.x, but is expected to work on most versions with Lua support.
+
+
+## Disclaimer
+
+The author of this software is not affiliated with FANUC Corporation in any way.
+All trademarks and registered trademarks are property of their respective owners, and company, product and service names mentioned in this readme or appearing in source code or other artefacts in this repository are used for identification purposes only.
+Use of these names does not imply endorsement by FANUC Corporation.
