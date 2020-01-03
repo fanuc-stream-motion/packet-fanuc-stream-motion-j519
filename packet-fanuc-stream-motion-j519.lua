@@ -483,22 +483,22 @@ do
 
 	-- actual dissector method
 	function p_fanuc_stream_motion.dissector(buf, pkt, tree)
-		info("---------------")
+		--info("---------------")
 		-- check buffer len
 		local buf_len = buf:len()
-		info("buffer length: " .. buf_len)
+		--info("buffer length: " .. buf_len)
 		-- anything less than the size of a header will not do
 		if (buf_len <= 0) or (buf_len < SZ_HEADER) then return end
 
 		-- either we resume dissecting, or we start fresh
 		local offset = pkt.desegment_offset or 0
-		info("offset: " .. offset)
+		--info("offset: " .. offset)
 
 		-- keep dissecting as long as there are bytes available
 		while true do
 			-- see whether this is a request or reply pkt
 			ctx.pkt_to_robot = is_pkt_to_robot()
-			info("to robot: " .. tostring(ctx.pkt_to_robot))
+			--info("to robot: " .. tostring(ctx.pkt_to_robot))
 
 			-- retrieve the pkt type from the header and use it to figure out
 			-- how many bytes we really would need to dissect this pkt.
@@ -507,12 +507,12 @@ do
 			local pkt_type = extract_pkt_type(buf, offset)
 			local pkt_len = get_pkt_len(pkt_type, ctx.pkt_to_robot) or 0
 
-			info("pkt_type: " .. pkt_type)
-			info("pkt_len: " .. pkt_len)
+			--info("pkt_type: " .. pkt_type)
+			--info("pkt_len: " .. pkt_len)
 
 			-- create string repr of packet type
 			local pkt_t_str = pkt_type_str[pkt_type] or "Unknown"
-			info("pkt_t_str: " .. pkt_t_str)
+			--info("pkt_t_str: " .. pkt_t_str)
 
 			-- TODO: kludge: packet ID 0 is used for both the 'start pkt'
 			-- and the 'state' pkt. That is unfortunate, as it complicates
@@ -529,8 +529,8 @@ do
 				return
 			end
 
-			info("pkt_type: " .. pkt_type)
-			info("pkt_len: " .. pkt_len)
+			--info("pkt_type: " .. pkt_type)
+			--info("pkt_len: " .. pkt_len)
 
 			-- TODO: is reassembly over UDP even supported?
 			-- If we don't have enough bytes in the buffer, signal
@@ -539,7 +539,7 @@ do
 			--       that pkts will always be sent in single datagrams,
 			--       and don't cross datagram boundaries, but you never know
 			local nextpkt = offset + pkt_len
-			info("nextpkt: " .. nextpkt)
+			--info("nextpkt: " .. nextpkt)
 			if (nextpkt > buf_len) then
 				pkt.desegment_len = nextpkt - buf_len
 				pkt.desegment_offset = offset
