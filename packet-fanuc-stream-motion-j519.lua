@@ -160,7 +160,8 @@ do
 	-- minimal default config
 	local config = {
 		disp_unused = true,
-		num_axes = DEF_NUM_AXES
+		num_axes = DEF_NUM_AXES,
+		ignore_mac = true,
 	}
 
 	local ctx = {
@@ -182,6 +183,7 @@ do
 	p_fanuc_stream_motion.prefs["udp_ports"] = Pref.range("UDP Ports", _F("%d", DEFAULT_J519_PORT), _F("UDP ports the dissector should be registered for (default: %d).", DEFAULT_J519_PORT), 65535)
 	p_fanuc_stream_motion.prefs["disp_unused"] = Pref.bool ("Show reserved fields", true, "Should reserved fields be added to dissection tree?")
 	p_fanuc_stream_motion.prefs["num_axes"] = Pref.uint("Number of axes", DEF_NUM_AXES, "Maximum nr of axes to display fields for (all values will always be dissected).")
+	p_fanuc_stream_motion.prefs["ignore_mac"] = Pref.bool("Dissect all packets", true, "Do not check MAC address of incoming packets (ie: treat anything coming from the J519 UDP port as J519 packets).")
 
 
 	-- 
@@ -241,7 +243,7 @@ do
 
 	local function is_pkt_to_robot()
 		-- TODO: should GE Fanuc OUI be checked as well?
-		return ((f_udp_dstport().value == DEFAULT_J519_PORT) and (f_eth_dst().range(0, 3):uint() == FANUCROB_OUI))
+		return ((f_udp_dstport().value == DEFAULT_J519_PORT) and ((f_eth_dst().range(0, 3):uint() == FANUCROB_OUI) or config.ignore_mac))
 	end
 
 	local function pkt_from_robot()
@@ -584,6 +586,7 @@ do
 		-- update config from prefs
 		config.disp_unused = p_fanuc_stream_motion.prefs["disp_unused"]
 		config.num_axes = p_fanuc_stream_motion.prefs["num_axes"]
+		config.ignore_mac = p_fanuc_stream_motion.prefs["ignore_mac"]
 
 		-- register the dissector
 		local udp_dissector_table = DissectorTable.get("udp.port")
