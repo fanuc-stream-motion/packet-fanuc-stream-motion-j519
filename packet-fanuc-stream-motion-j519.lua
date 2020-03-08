@@ -52,15 +52,20 @@ do
 	local SZ_STATE_PKT                  =   SZ_HEADER + (4 + (2 * 1) + (3 * 2) + 4 + (9 * 4) + (9 * 4) + (9 * 4))
 	local SZ_CMD_PKT                    =   SZ_HEADER + (4 + (2 * 1) + (2 * 2) + (2 * 1) + (4 * 2) + (9 * 4))
 	local SZ_STOP_PKT                   =   SZ_HEADER
+	local SZ_REQUEST_PKT                =   SZ_HEADER + (2 * 4)
+	                                        -- TODO: incorrect when increment is not 5%
+	local SZ_ACK_PKT                    =   SZ_HEADER + ((4 * 4) + (20 * 4) + (20 * 4))
 
 
 	-- packet types PC -> ROBOT
 	local PKT_TYPE_START_PKT                =   0
 	local PKT_TYPE_CMD_PKT                  =   1
 	local PKT_TYPE_STOP_PKT                 =   2
+	local PKT_TYPE_REQUEST_PKT              =   3
 
 	-- packet types ROBOT -> PC
 	local PKT_TYPE_STATE_PKT                =   0
+	local PKT_TYPE_ACK_PKT                  =   3
 
 
 	-- state packet: status bits (all other bits are reserved)
@@ -93,14 +98,23 @@ do
 	local CMD_DATA_STYLE_JOINT                = 1
 
 
+	-- request packet: threshold types
+	local REQ_THRESHOLD_VEL                   = 0
+	local REQ_THRESHOLD_ACC                   = 1
+	local REQ_THRESHOLD_JRK                   = 2
+
+
+
 	-- 
 	-- constant -> string rep tables
 	-- 
 	local pkt_type_str = {
-		[PKT_TYPE_START_PKT] = "Start",
-		[PKT_TYPE_STOP_PKT ] = "Stop",
-		[PKT_TYPE_STATE_PKT] = "Robot Status",   -- TODO: same key a "data start"
-		[PKT_TYPE_CMD_PKT  ] = "Motion Command",
+		[PKT_TYPE_START_PKT  ] = "Start",
+		[PKT_TYPE_STOP_PKT   ] = "Stop",
+		[PKT_TYPE_STATE_PKT  ] = "Robot Status",   -- TODO: same key a "data start"
+		[PKT_TYPE_CMD_PKT    ] = "Motion Command",
+		[PKT_TYPE_REQUEST_PKT] = "Request",
+		[PKT_TYPE_ACK_PKT    ] = "Ack",            -- TODO: same key as "request"
 	}
 
 	local cmd_data_style_str = {
@@ -135,16 +149,31 @@ do
 	}
 
 
+	local thresh_type_str = {
+		[REQ_THRESHOLD_VEL] = "Velocity (deg/s)",
+		[REQ_THRESHOLD_ACC] = "Acceleration (deg/s^2)",
+		[REQ_THRESHOLD_JRK] = "Jerk (deg/s^3)",
+	}
+
+
+	local thresh_unit_str = {
+		[REQ_THRESHOLD_VEL] = "deg/s",
+		[REQ_THRESHOLD_ACC] = "deg/s^2",
+		[REQ_THRESHOLD_JRK] = "deg/s^3",
+	}
+
+
 	-- TODO: hard-coded
 	local axes_str_cart = {
-		"X", "Y", "Z", "W", "P", "R", "E1", "E2", "E3"
+		"X", "Y", "Z", "W", "P", "R", "E1", "E2", "E3",
 	}
 
 	-- TODO: hard-coded
 	-- TODO: missing units for E1, E2, E3
 	local axes_units_str = {
-		"mm", "mm", "mm", "deg", "deg", "deg"
+		"mm", "mm", "mm", "deg", "deg", "deg",
 	}
+
 
 
 	-- 
@@ -216,6 +245,12 @@ do
 
 	fields.time_stamp     = ProtoField.uint32("frj519.time_stamp"    , "Time Stamp"        , base.DEC_HEX, nil         , nil, "Time stamp when position data and motor current are recorded. Unit is ms. Resolution is 2ms.")
 
+	fields.axis_no        = ProtoField.uint32("frj519.axis_no"       , "Axis No"           , base.DEC    , nil         , nil, "Axis number (1-9)")
+	fields.thresh_type    = ProtoField.uint32("frj519.threshold_type", "Threshold Type"    , base.DEC    , thresh_type_str, nil, "Threshold type")
+	fields.max_cart_spd   = ProtoField.uint32("frj519.max_cart_spd"  , "Max Cart Speed"    , base.DEC    , nil         , nil, "Maximum Cartesian program speed of the robot (mm/s)")
+	fields.cart_vel_incr  = ProtoField.uint32("frj519.cart_vel_incr" , "Cart Speed Incr"   , base.DEC    , nil         , nil, "Threshold table speed increment (percent per column)")
+
+
 
 	local experts = p_fanuc_stream_motion.experts
 	experts.to_robot = ProtoExpert.new("frj519.expert.to_robot", "Packet sent to robot controller", expert.group.REQUEST_CODE, expert.severity.NOTE)
@@ -234,6 +269,9 @@ do
 	local f_data_style  = Field.new("frj519.data_style")
 	local f_status      = Field.new("frj519.status")
 
+	local f_axis        = Field.new("frj519.axis_no")
+	local f_thresh_type = Field.new("frj519.threshold_type")
+	local f_cart_vel_incr = Field.new("frj519.cart_vel_incr")
 
 
 
@@ -254,14 +292,16 @@ do
 		-- TODO: giant kludge
 		if pkt_to_robot then
 			local temp = {
-				[PKT_TYPE_START_PKT] = SZ_START_PKT,
-				[PKT_TYPE_STOP_PKT ] = SZ_STOP_PKT,
-				[PKT_TYPE_CMD_PKT  ] = SZ_CMD_PKT,
+				[PKT_TYPE_START_PKT  ] = SZ_START_PKT,
+				[PKT_TYPE_STOP_PKT   ] = SZ_STOP_PKT,
+				[PKT_TYPE_CMD_PKT    ] = SZ_CMD_PKT,
+				[PKT_TYPE_REQUEST_PKT] = SZ_REQUEST_PKT,
 			}
 			return temp[pkt_type]
 		else
 			local temp = {
 				[PKT_TYPE_STATE_PKT] = SZ_STATE_PKT,
+				[PKT_TYPE_ACK_PKT  ] = SZ_ACK_PKT,
 			}
 			return temp[pkt_type]
 		end
@@ -297,6 +337,29 @@ do
 			local junits = axis_units[i] or "deg"
 			jtree:add(jbuf, _F("%-6s: %10.5f", jname, jval)):append_text(" " .. junits)
 			offset_ = offset_ + item_len
+		end
+
+		return (offset_ - offset)
+	end
+
+
+	local function disf_threshold_data(buf, tree, offset, label, vel_incr, axis_units)
+		local offset_ = offset
+		local item_len = 4
+		-- TODO: make sure num_elem is an int
+		local num_elem = 100/vel_incr
+		local jtree = tree:add(buf(offset_, (num_elem * item_len)), label)
+
+		-- start at first increment (never 0)
+		local perc = vel_incr
+
+		-- loop over all columns
+		for i = 1, num_elem do
+			local jbuf  = buf(offset_, item_len)
+			local jval  = jbuf:float()
+			jtree:add(jbuf, _F("%3.0f%% of Vmax: %7.2f", perc, jval)):append_text(" " .. axis_units)
+			offset_ = offset_ + item_len
+			perc = perc + vel_incr
 		end
 
 		return (offset_ - offset)
@@ -371,7 +434,7 @@ do
 	end
 
 
-	local function disf_p2r_state_pkt(buf, pkt, tree, offset)
+	local function disf_r2p_state_pkt(buf, pkt, tree, offset)
 		local offset_ = offset
 		local lt = tree
 
@@ -427,14 +490,68 @@ do
 	end
 
 
+	local function disf_p2r_request_pkt(buf, pkt, tree, offset)
+		local offset_ = offset
+		local lt = tree
+
+		lt:add(fields.axis_no, buf(offset_, 4))
+		offset_ = offset_ + 4
+
+		lt:add(fields.thresh_type, buf(offset_, 4))
+		offset_ = offset_ + 4
+
+		-- nr of bytes we consumed
+		return (offset_ - offset)
+	end
+
+
+	local function disf_r2p_ack_pkt(buf, pkt, tree, offset)
+		local offset_ = offset
+		local lt = tree
+
+		lt:add(fields.axis_no, buf(offset_, 4))
+		offset_ = offset_ + 4
+
+		lt:add(fields.thresh_type, buf(offset_, 4))
+		offset_ = offset_ + 4
+
+		lt:add(fields.max_cart_spd, buf(offset_, 4)):append_text(" mm/s")
+		offset_ = offset_ + 4
+
+		lt:add(fields.cart_vel_incr, buf(offset_, 4))
+		offset_ = offset_ + 4
+
+		-- dissect threshold limit values
+		local unit_str = thresh_unit_str[f_thresh_type().value] or "ERROR"
+		local num_elem = f_cart_vel_incr().value
+		offset_ = offset_ + disf_threshold_data(buf, lt, offset_,
+			"Thresholds - NO load", num_elem, unit_str)
+
+		offset_ = offset_ + disf_threshold_data(buf, lt, offset_,
+			"Thresholds - MAX load", num_elem, unit_str)
+
+		-- nr of bytes we consumed
+		return (offset_ - offset)
+	end
+
+
 	-- 
 	-- pkt type -> dissection function map
 	-- 
+	-- true  : PC -> Robot
+	-- false : Robot -> PC
+	-- 
 	local map_pkt_type_to_disf = {
-		--[PKT_TYPE_START_PKT] = disf_p2r_start_pkt,
-		[PKT_TYPE_CMD_PKT  ] = disf_p2r_cmd_pkt,
-		--[PKT_TYPE_STOP_PKT ] = disf_p2r_start_pkt,
-		[PKT_TYPE_STATE_PKT] = disf_p2r_state_pkt,
+		[true] = {
+			--[PKT_TYPE_START_PKT] = disf_p2r_start_pkt,
+			[PKT_TYPE_CMD_PKT] = disf_p2r_cmd_pkt,
+			--[PKT_TYPE_STOP_PKT] = disf_p2r_start_pkt,
+			[PKT_TYPE_REQUEST_PKT] = disf_p2r_request_pkt,
+		},
+		[false] = {
+			[PKT_TYPE_STATE_PKT] = disf_r2p_state_pkt,
+			[PKT_TYPE_ACK_PKT] = disf_r2p_ack_pkt,
+		}
 	}
 
 
@@ -456,7 +573,7 @@ do
 			offset_ = offset_ + 4
 
 		-- retrieve dissection function for packet type
-		local f = map_pkt_type_to_disf[pkt_type]
+		local f = map_pkt_type_to_disf[ctx.pkt_to_robot][pkt_type]
 
 
 		-- TODO: kludge: work-around START vs STATE ambiguity
@@ -523,6 +640,14 @@ do
 				pkt_t_str = "Data Output Start"
 				pkt_type = PKT_TYPE_START_PKT
 				pkt_len = SZ_START_PKT
+			end
+
+			-- TODO: kludge: override pkt name we display for "type 3" pkts,
+			-- depending on whether it is sent to the controller, or received.
+			-- NOTE: this does not 'fix' fields.packet_type, so the pkt name
+			-- shown in the dissection tree will be wrong
+			if (ctx.pkt_to_robot) then
+				pkt_t_str = "Request"
 			end
 
 			-- '0' is an invalid packet length, so abort
