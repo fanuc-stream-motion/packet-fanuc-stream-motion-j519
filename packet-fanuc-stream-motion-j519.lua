@@ -646,7 +646,7 @@ do
 			-- depending on whether it is sent to the controller, or received.
 			-- NOTE: this does not 'fix' fields.packet_type, so the pkt name
 			-- shown in the dissection tree will be wrong
-			if (ctx.pkt_to_robot) then
+			if (ctx.pkt_to_robot) and (pkt_type == PKT_TYPE_REQUEST_PKT) then
 				pkt_t_str = "Request"
 			end
 
