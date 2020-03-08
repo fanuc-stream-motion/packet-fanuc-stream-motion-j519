@@ -676,6 +676,9 @@ do
 			-- add protocol to tree
 			local prot_tree = tree:add(p_fanuc_stream_motion, buf(offset, pkt_len))
 
+			-- dissect pkt
+			local res = parse(buf, pkt, prot_tree, offset, pkt_type)
+
 			-- add some extra info to the protocol line in the packet treeview
 			prot_tree:append_text(_F(", %s (0x%02x), %u bytes", 
 				pkt_t_str, pkt_type, pkt_len))
@@ -683,16 +686,20 @@ do
 			-- add info to top pkt view
 			pkt.cols.protocol = p_fanuc_stream_motion.name
 
+			-- for outgoing requests, add some info on what is requested
+			local extra_str = ""
+			if (pkt_type == PKT_TYPE_REQUEST_PKT) and (ctx.pkt_to_robot) then
+				local thresht_str = thresh_type_str[f_thresh_type().value] or "UNKNOWN"
+				extra_str = _F(", J%d, %s", f_axis().value, thresht_str)
+			end
+
 			-- use offset in buffer to determine if we need to append to or set
 			-- the info column
 			if (offset > 0) then
-				pkt.cols.info:append(_F("; %s (0x%02x)", pkt_t_str, pkt_type))
+				pkt.cols.info:append(_F("; %s (0x%02x)%s", pkt_t_str, pkt_type, extra_str))
 			else
-				pkt.cols.info = _F("%s (0x%02x)", pkt_t_str, pkt_type)
+				pkt.cols.info = _F("%s (0x%02x)%s", pkt_t_str, pkt_type, extra_str)
 			end
-
-			-- dissect rest of pkt
-			local res = parse(buf, pkt, prot_tree, offset, pkt_type)
 
 			-- increment 'read pointer' and stop if we've dissected all bytes 
 			-- in the buffer
