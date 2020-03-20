@@ -151,15 +151,15 @@ do
 
 	local thresh_type_str = {
 		[REQ_THRESHOLD_VEL] = "Velocity (deg/s)",
-		[REQ_THRESHOLD_ACC] = "Acceleration (deg/s^2)",
-		[REQ_THRESHOLD_JRK] = "Jerk (deg/s^3)",
+		[REQ_THRESHOLD_ACC] = "Acceleration (deg/s²)",
+		[REQ_THRESHOLD_JRK] = "Jerk (deg/s³)",
 	}
 
 
 	local thresh_unit_str = {
 		[REQ_THRESHOLD_VEL] = "deg/s",
-		[REQ_THRESHOLD_ACC] = "deg/s^2",
-		[REQ_THRESHOLD_JRK] = "deg/s^3",
+		[REQ_THRESHOLD_ACC] = "deg/s²",
+		[REQ_THRESHOLD_JRK] = "deg/s³",
 	}
 
 
