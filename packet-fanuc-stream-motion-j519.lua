@@ -36,7 +36,7 @@ do
 	-- 
 	-- constants
 	-- 
-	local DISSECTOR_VERSION             = "0.0.6"
+	local DISSECTOR_VERSION             = "0.1.1"
 
 	local DEFAULT_J519_PORT             = 60015
 	local FANUCROB_OUI                  = 0x00e0e4

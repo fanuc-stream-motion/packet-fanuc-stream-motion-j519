@@ -1,5 +1,5 @@
 ## packet-fanuc-stream-motion
-v0.0.6
+v0.1.1
 
 
 ## Overview
