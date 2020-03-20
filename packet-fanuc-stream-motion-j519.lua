@@ -356,7 +356,7 @@ do
 		for i = 1, num_elem do
 			local jbuf  = buf(offset_, item_len)
 			local jval  = jbuf:float()
-			jtree:add(jbuf, _F("%3.0f%% of Vmax: %7.2f", perc, jval)):append_text(" " .. axis_units)
+			jtree:add(jbuf, _F("%3.0f%% of Vmax: %8.2f", perc, jval)):append_text(" " .. axis_units)
 			offset_ = offset_ + item_len
 			perc = perc + vel_incr
 		end
