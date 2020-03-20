@@ -248,7 +248,7 @@ do
 	fields.axis_no        = ProtoField.uint32("frj519.axis_no"       , "Axis No"           , base.DEC    , nil         , nil, "Axis number (1-9)")
 	fields.thresh_type    = ProtoField.uint32("frj519.threshold_type", "Threshold Type"    , base.DEC    , thresh_type_str, nil, "Threshold type")
 	fields.max_cart_spd   = ProtoField.uint32("frj519.max_cart_spd"  , "Max Cart Speed"    , base.DEC    , nil         , nil, "Maximum Cartesian program speed of the robot (mm/s)")
-	fields.cart_vel_incr  = ProtoField.uint32("frj519.cart_vel_incr" , "Cart Speed Incr"   , base.DEC    , nil         , nil, "Threshold table speed increment (percent per column)")
+	fields.unknown0       = ProtoField.uint32("frj519.unknown0"      , "Unknown0"          , base.DEC    , nil         , nil, "Unknown for now")
 
 
 
@@ -271,7 +271,6 @@ do
 
 	local f_axis        = Field.new("frj519.axis_no")
 	local f_thresh_type = Field.new("frj519.threshold_type")
-	local f_cart_vel_incr = Field.new("frj519.cart_vel_incr")
 
 
 
@@ -343,11 +342,11 @@ do
 	end
 
 
-	local function disf_threshold_data(buf, tree, offset, label, vel_incr, axis_units)
+	local function disf_threshold_data(buf, tree, offset, label, axis_units)
 		local offset_ = offset
 		local item_len = 4
-		-- TODO: make sure num_elem is an int
-		local num_elem = 100/vel_incr
+		local num_elem = 20
+		local vel_incr = 5
 		local jtree = tree:add(buf(offset_, (num_elem * item_len)), label)
 
 		-- start at first increment (never 0)
@@ -518,17 +517,16 @@ do
 		lt:add(fields.max_cart_spd, buf(offset_, 4)):append_text(" mm/s")
 		offset_ = offset_ + 4
 
-		lt:add(fields.cart_vel_incr, buf(offset_, 4))
+		lt:add(fields.unknown0, buf(offset_, 4))
 		offset_ = offset_ + 4
 
 		-- dissect threshold limit values
 		local unit_str = thresh_unit_str[f_thresh_type().value] or "ERROR"
-		local num_elem = f_cart_vel_incr().value
 		offset_ = offset_ + disf_threshold_data(buf, lt, offset_,
-			"Thresholds - NO load", num_elem, unit_str)
+			"Thresholds - NO load", unit_str)
 
 		offset_ = offset_ + disf_threshold_data(buf, lt, offset_,
-			"Thresholds - MAX load", num_elem, unit_str)
+			"Thresholds - MAX load", unit_str)
 
 		-- nr of bytes we consumed
 		return (offset_ - offset)
